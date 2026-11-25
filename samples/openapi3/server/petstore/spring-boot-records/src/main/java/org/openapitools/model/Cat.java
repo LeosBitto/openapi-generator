@@ -27,7 +27,7 @@ import org.springframework.lang.Nullable;
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", comments = "Generator version: 7.28.0-SNAPSHOT")
 public record Cat(
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @NotNull 
+
     @Schema(name = "animalType", requiredMode = Schema.RequiredMode.REQUIRED)
     @JsonProperty("animalType")
     String animalType,

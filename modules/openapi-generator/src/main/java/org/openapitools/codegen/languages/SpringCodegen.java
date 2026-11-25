@@ -28,6 +28,7 @@ import com.samskivert.mustache.Mustache;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.media.Discriminator;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.servers.Server;
@@ -50,6 +51,7 @@ import org.openapitools.codegen.model.OperationsMap;
 import org.openapitools.codegen.templating.mustache.SplitStringLambda;
 import org.openapitools.codegen.templating.mustache.SpringHttpStatusLambda;
 import org.openapitools.codegen.templating.mustache.TrimWhitespaceLambda;
+import org.openapitools.codegen.utils.DiscriminatorUtils;
 import org.openapitools.codegen.utils.JsonAnnotationPolicyUtils;
 import org.openapitools.codegen.utils.JsonIncludePolicy;
 import org.openapitools.codegen.utils.ModelUtils;
@@ -1766,6 +1768,11 @@ public class SpringCodegen extends AbstractJavaCodegen
 
         Map<String, CodegenModel> allModels = getAllModels(objs);
 
+        // Other generators (such as java-camel) also inherit the Spring libraries and templates.
+        if (useBeanValidation && "spring".equals(getName())) {
+            suppressDiscriminatorNotNull(allModels);
+        }
+
         // conditionally force the generation of no args constructor
         for (CodegenModel cm : allModels.values()) {
             boolean hasLombokNoArgsConstructor = lombokAnnotations != null && lombokAnnotations.containsKey("NoArgsConstructor");
@@ -1832,6 +1839,58 @@ public class SpringCodegen extends AbstractJavaCodegen
         }
 
         return objs;
+    }
+
+    private void suppressDiscriminatorNotNull(Map<String, CodegenModel> allModels) {
+        for (CodegenModel model : allModels.values()) {
+            if (model.discriminator != null) {
+                suppressNotNull(model, model.discriminator.getPropertyBaseName());
+            }
+        }
+
+        // A union can declare the discriminator while the actual property is emitted on its members.
+        // Read the schemas, not just the generated models: the union itself may not be selected.
+        Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+        for (Map.Entry<String, Schema> entry : schemas.entrySet()) {
+            Schema<?> schema = entry.getValue();
+            Discriminator discriminator = schema.getDiscriminator();
+            if (discriminator == null) {
+                continue;
+            }
+            Set<String> members = new LinkedHashSet<>();
+            members.add(entry.getKey());
+            for (List<Schema> alternatives : Arrays.asList(schema.getOneOf(), schema.getAnyOf())) {
+                if (alternatives != null) {
+                    for (Schema<?> alternative : alternatives) {
+                        if (alternative.get$ref() != null) {
+                            members.add(ModelUtils.getSimpleRef(alternative.get$ref()));
+                        }
+                    }
+                }
+            }
+            DiscriminatorUtils.getUniqueDescendants(openAPI, discriminator)
+                    .forEach(mappedModel -> members.add(mappedModel.getModelName()));
+
+            // An inherited getter carries its validation constraint on the Java superclass.
+            Set<String> visited = new HashSet<>();
+            for (String member : members) {
+                while (member != null && schemas.containsKey(member) && visited.add(member)) {
+                    CodegenModel model = allModels.get(toModelName(member));
+                    suppressNotNull(model, discriminator.getPropertyName());
+                    member = ModelUtils.getParentName(schemas.get(member), schemas);
+                }
+            }
+        }
+    }
+
+    private static void suppressNotNull(CodegenModel model, String propertyName) {
+        if (model != null) {
+            for (CodegenProperty property : model.vars) {
+                if (property.baseName.equals(propertyName)) {
+                    property.vendorExtensions.put("springSkipDiscriminatorNotNull", true);
+                }
+            }
+        }
     }
 
     /**

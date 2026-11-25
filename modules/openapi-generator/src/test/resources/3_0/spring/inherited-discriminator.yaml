@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Inherited discriminator
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Base:
+      type: object
+      x-parent: true
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          minLength: 1
+    Member:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - type: object
+          properties:
+            value:
+              type: string
+    OtherMember:
+      allOf:
+        - $ref: '#/components/schemas/Base'
+        - type: object
+          properties:
+            count:
+              type: integer
+    Union:
+      oneOf:
+        - $ref: '#/components/schemas/Member'
+        - $ref: '#/components/schemas/OtherMember'
+      discriminator:
+        propertyName: kind
+    DirectBase:
+      type: object
+      x-parent: true
+      required: [kind]
+      properties:
+        kind:
+          type: string
+    Discriminated:
+      discriminator:
+        propertyName: kind
+      allOf:
+        - $ref: '#/components/schemas/DirectBase'
+        - type: object
+          properties:
+            value:
+              type: string
+    Subtype:
+      allOf:
+        - $ref: '#/components/schemas/Discriminated'
+        - type: object
+          properties:
+            count:
+              type: integer

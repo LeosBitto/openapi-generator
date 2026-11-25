@@ -49,7 +49,7 @@ public class Apple implements Fruit {
    * Get fruitType
    * @return fruitType
    */
-  @NotNull 
+
   @Schema(name = "fruitType", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("fruitType")
   public String getFruitType() {

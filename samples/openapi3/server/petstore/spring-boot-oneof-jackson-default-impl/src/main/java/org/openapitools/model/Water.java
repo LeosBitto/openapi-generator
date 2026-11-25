@@ -49,7 +49,7 @@ public class Water implements Beverage {
    * Get beverageType
    * @return beverageType
    */
-  @NotNull 
+
   @Schema(name = "beverageType", requiredMode = Schema.RequiredMode.REQUIRED)
   @JsonProperty("beverageType")
   public String getBeverageType() {

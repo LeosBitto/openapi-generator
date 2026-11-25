@@ -39,7 +39,7 @@ public record Dog(
     @Nullable Boolean barks,
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @NotNull 
+
     @Schema(name = "animalType", requiredMode = Schema.RequiredMode.REQUIRED)
     @JsonProperty("animalType")
     String animalType

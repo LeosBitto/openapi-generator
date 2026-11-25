@@ -3365,6 +3365,61 @@ public class SpringCodegenTest {
         javaFileAssert.hasNoImports("jakarta.validation.constraints.NotNull");
     }
 
+    @DataProvider
+    public Object[][] discriminatorValidationLibraries() {
+        return new Object[][] {
+                {SPRING_BOOT, SpringCodegen.USE_SPRING_BOOT3},
+                {SPRING_BOOT, SpringCodegen.USE_SPRING_BOOT4},
+                {SPRING_CLOUD_LIBRARY, SpringCodegen.USE_SPRING_BOOT3},
+                {SPRING_CLOUD_LIBRARY, SpringCodegen.USE_SPRING_BOOT4},
+                {SPRING_HTTP_INTERFACE, SpringCodegen.USE_SPRING_BOOT3},
+                {SPRING_HTTP_INTERFACE, SpringCodegen.USE_SPRING_BOOT4}
+        };
+    }
+
+    @Test(dataProvider = "discriminatorValidationLibraries")
+    public void omitsNotNullOnDiscriminator(String library, String springBootOption) throws IOException {
+        SpringCodegen codegen = new SpringCodegen();
+        codegen.setLibrary(library);
+        codegen.additionalProperties().put(SpringCodegen.USE_BEANVALIDATION, true);
+        codegen.additionalProperties().put(springBootOption, true);
+
+        Map<String, File> files = generateFiles(codegen, "src/test/resources/3_0/oneOfDiscriminator.yaml");
+
+        JavaFileAssert.assertThat(files.get("AppleReqDisc.java"))
+                .assertMethod("getSeeds").assertMethodAnnotations().containsWithName("NotNull");
+        JavaFileAssert.assertThat(files.get("PetEnumDisc.java"))
+                .assertMethod("getPetType").assertMethodAnnotations().doesNotContainWithName("NotNull");
+        JavaFileAssert.assertThat(files.get("AppleReqDisc.java"))
+                .assertMethod("getFruitType").assertMethodAnnotations().doesNotContainWithName("NotNull");
+        JavaFileAssert.assertThat(files.get("AppleAllOfDisc.java"))
+                .assertMethod("getFruitType").assertMethodAnnotations().doesNotContainWithName("NotNull");
+    }
+
+    @Test(dataProvider = "discriminatorValidationLibraries")
+    public void omitsNotNullOnInheritedDiscriminatorDuringSelectiveGeneration(String library, String springBootOption) throws IOException {
+        SpringCodegen codegen = new SpringCodegen();
+        codegen.setLibrary(library);
+        codegen.additionalProperties().put(SpringCodegen.USE_BEANVALIDATION, true);
+        codegen.additionalProperties().put(springBootOption, true);
+
+        GlobalSettings.setProperty(CodegenConstants.MODELS, "Base,Member,DirectBase,Discriminated");
+        try {
+            Map<String, File> files = generateFiles(codegen, "src/test/resources/3_0/spring/inherited-discriminator.yaml");
+
+            assertThat(files).doesNotContainKey("Union.java");
+            assertFileContains(files.get("Member.java").toPath(), "class Member extends Base");
+            assertFileContains(files.get("Base.java").toPath(), "public Base(String kind)");
+            JavaFileAssert.assertThat(files.get("Base.java"))
+                    .assertMethod("getKind").assertMethodAnnotations().containsWithName("Size").doesNotContainWithName("NotNull");
+            assertFileContains(files.get("Discriminated.java").toPath(), "class Discriminated extends DirectBase");
+            JavaFileAssert.assertThat(files.get("DirectBase.java"))
+                    .assertMethod("getKind").assertMethodAnnotations().doesNotContainWithName("NotNull");
+        } finally {
+            GlobalSettings.reset();
+        }
+    }
+
     @Test
     public void requiredFieldShouldNotIncludeNotNullAnnotationWhenBeanValidationFalseJavaCamel_issue23751() throws IOException {
         JavaCamelServerCodegen codegen = new JavaCamelServerCodegen();
