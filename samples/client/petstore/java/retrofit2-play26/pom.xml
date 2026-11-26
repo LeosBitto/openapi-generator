@@ -36,7 +36,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.0.0-M1</version>
+                <version>3.7.0</version>
                 <executions>
                     <execution>
                         <id>enforce-maven</id>
@@ -276,11 +276,6 @@
                 <groupId>com.typesafe.play</groupId>
                 <artifactId>play-ahc-ws_2.12</artifactId>
                 <version>${play-version}</version>
-            </dependency>
-            <dependency>
-                <groupId>jakarta.validation</groupId>
-                <artifactId>jakarta.validation-api</artifactId>
-                <version>${beanvalidation-version}</version>
             </dependency>
         <dependency>
             <groupId>jakarta.annotation</groupId>
